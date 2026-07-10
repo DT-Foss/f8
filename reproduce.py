@@ -36,6 +36,8 @@ EXPERIMENTS = [
      os.path.join(RESULTS, "present.json")),
     ("TEA (full-round)", os.path.join(EXP, "tea.py"),
      os.path.join(RESULTS, "tea.json")),
+    ("RC5-32/12/16 (full-round)", os.path.join(EXP, "rc5.py"),
+     os.path.join(RESULTS, "rc5.json")),
 ]
 
 
@@ -69,6 +71,7 @@ def summarize():
     gift = load(os.path.join(RESULTS, "gift.json"))
     present = load(os.path.join(RESULTS, "present.json"))
     tea = load(os.path.join(RESULTS, "tea.json"))
+    rc5 = load(os.path.join(RESULTS, "rc5.json"))
 
     # Speck 32/64: prefer the 3-seed mean Z from the core reproduction (C1).
     z_speck32 = core["C1"]["mean_z"]
@@ -87,6 +90,8 @@ def summarize():
     rows.append(("PRESENT-80", 31, "permutation cycle", present["full_round_z"]))
     rows.append(("TEA", tea["result"]["full_rounds"], "Feistel self-XOR",
                 tea["result"]["mean_z_N200k"]))
+    rows.append(("RC5-32/12/16", rc5["result"]["full_rounds"], "Feistel self-XOR",
+                rc5["result"]["mean_z_N200k"]))
 
     print("\n" + "=" * 78)
     print("  F8 FULL-ROUND DISTINGUISHERS — SUMMARY")

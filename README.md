@@ -23,8 +23,9 @@ Generate the cipher output at round `R` and at round `R+1` with the **same key a
 | GIFT-128        |   40   | permutation cycle   |   +275   | `experiments/gift.py` |
 | PRESENT-80      |   31   | permutation cycle   |  +1183   | `experiments/present.py` |
 | TEA             |   32   | Feistel self-XOR    |   +499   | `experiments/tea.py` |
+| RC5-32/12/16    |   12   | Feistel self-XOR    |   +221   | `experiments/rc5.py` |
 
-Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). Threefish-256 reaches MI = 0.6931 = ln 2 on bit 0, the information-theoretic maximum for a single bit. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs. TEA's Z is confirmed by N-scaling (Z=+40.6 at N=20,000 → +498.9 at N=200,000, a 12.3× growth — well above the ~3.2× expected for a real signal at 10× the sample size, and robust across 5 independent seeds).
+Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). Threefish-256 reaches MI = 0.6931 = ln 2 on bit 0, the information-theoretic maximum for a single bit. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs. TEA's and RC5's Z are confirmed by N-scaling (TEA: +40.6 at N=20,000 → +498.9 at N=200,000, 12.3× growth; RC5: +42.1 → +220.7, 5.2× growth — both well above the ~3.2× expected for a real signal at 10× the sample size, and robust across 5 independent seeds).
 
 ## Three architectural mechanisms
 
@@ -32,7 +33,7 @@ F8's signal always requires the same underlying condition: **a state variable me
 
 1. **β-masking (Speck).** `ROL(y, β)` masks the low β bits of the addition output. The remaining `ws − β` bits carry the addition's carry correlation uniformly, landing on an α-shifted diagonal.
 2. **Raw carry + rotation-spread (Threefish-256).** The permutation keeps each MIX pair's addition at a fixed word position every round — consecutive additions over the same evolving data expose the carry directly (MI = ln 2 on bit 0), then the cipher's own rotations spread it across all 64 bit positions.
-3. **Feistel self-XOR (TEA).** A single addition (`y += A ^ B ^ C`) applied to the XOR of three terms, each a transform of the *other* branch — the two branches occupy fixed positions and alternate roles every round, exposing the addition's carry chain the same way β-masking does.
+3. **Feistel self-XOR (TEA, RC5).** A single addition applied directly to a transform of the *other* branch, with its result used immediately as the new branch value — no foreign XOR interrupts between the addition and the next round consuming it. TEA: `y += (z<<4)^(z+sum)^(z>>5)`. RC5: `A = ROTL(A^B, B) + S[2i]`. Both branches occupy fixed positions and alternate roles every round, exposing the addition's carry chain the same way β-masking does. (Ciphers with the *same* fixed-position self-reference but a foreign XOR *between* nested additions — XTEA, the Alzette ARX-box used in SPARKLE — do not show this signal; the foreign XOR breaks the self-reference the mechanism depends on.)
 
 For the SPN ciphers (GIFT, PRESENT), the same cross-round MI leak is driven instead by the cycle structure of the fixed bit permutation.
 
@@ -67,6 +68,7 @@ python experiments/threefish256.py       # Threefish-256, 72 rounds
 python experiments/gift.py               # GIFT-64 / GIFT-128
 python experiments/present.py            # PRESENT-80
 python experiments/tea.py                # TEA, 32 rounds
+python experiments/rc5.py                # RC5-32/12/16
 ```
 
 Each script writes a JSON result under `results/`. To regenerate the figures:

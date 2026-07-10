@@ -36,6 +36,7 @@ REFERENCE_Z = [
     ("GIFT-128", 40, "permutation cycle", 275),
     ("PRESENT-80", 31, "permutation cycle", 1183),
     ("TEA", 32, "Feistel self-XOR", 499),
+    ("RC5-32/12/16", 12, "Feistel self-XOR", 221),
 ]
 
 MECH_COLOR = {
@@ -62,6 +63,7 @@ def collect_zscores():
     gift = load_json("gift.json")
     present = load_json("present.json")
     tea = load_json("tea.json")
+    rc5 = load_json("rc5.json")
     if not all([core, speck, tf, gift, present]):
         return list(REFERENCE_Z)
 
@@ -77,6 +79,9 @@ def collect_zscores():
     if tea:
         rows.append(("TEA", tea["result"]["full_rounds"], "Feistel self-XOR",
                      tea["result"]["mean_z_N200k"]))
+    if rc5:
+        rows.append(("RC5-32/12/16", rc5["result"]["full_rounds"], "Feistel self-XOR",
+                     rc5["result"]["mean_z_N200k"]))
     return rows
 
 
