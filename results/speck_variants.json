@@ -5,8 +5,8 @@
     "N": 20000,
     "seeds": 3,
     "n_perm": 20,
-    "timestamp": "2026-07-10T23:45:07",
-    "elapsed_seconds": 17.2
+    "timestamp": "2026-07-11T00:28:06",
+    "elapsed_seconds": 17.5
   },
   "variants": {
     "Speck 32/64": {

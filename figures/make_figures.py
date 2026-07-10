@@ -35,12 +35,14 @@ REFERENCE_Z = [
     ("GIFT-64", 28, "permutation cycle", 676),
     ("GIFT-128", 40, "permutation cycle", 275),
     ("PRESENT-80", 31, "permutation cycle", 1183),
+    ("TEA", 32, "Feistel self-XOR", 499),
 ]
 
 MECH_COLOR = {
     "beta-masking": "#2563eb",        # blue
     "raw carry": "#dc2626",           # red
     "permutation cycle": "#16a34a",   # green
+    "Feistel self-XOR": "#9333ea",    # purple
 }
 
 
@@ -59,6 +61,7 @@ def collect_zscores():
     tf = load_json("threefish256.json")
     gift = load_json("gift.json")
     present = load_json("present.json")
+    tea = load_json("tea.json")
     if not all([core, speck, tf, gift, present]):
         return list(REFERENCE_Z)
 
@@ -71,6 +74,9 @@ def collect_zscores():
     rows.append(("GIFT-64", 28, "permutation cycle", gift["gift64_full_round_z"]))
     rows.append(("GIFT-128", 40, "permutation cycle", gift["gift128_full_round_z"]))
     rows.append(("PRESENT-80", 31, "permutation cycle", present["full_round_z"]))
+    if tea:
+        rows.append(("TEA", tea["result"]["full_rounds"], "Feistel self-XOR",
+                     tea["result"]["mean_z_N200k"]))
     return rows
 
 

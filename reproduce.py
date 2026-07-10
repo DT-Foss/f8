@@ -2,9 +2,9 @@
 """Master reproduction script for the F8 full-round distinguishers.
 
 Runs each experiment in turn (core Speck 32/64 properties, all four Speck
-variants, Threefish-256, GIFT-64/128, PRESENT-80), then prints one summary
-table of the full-round Z-scores. Each experiment also writes its own JSON
-result under results/.
+variants, Threefish-256, GIFT-64/128, PRESENT-80, TEA), then prints one
+summary table of the full-round Z-scores. Each experiment also writes its
+own JSON result under results/.
 
 Usage:
     python reproduce.py
@@ -34,6 +34,8 @@ EXPERIMENTS = [
      os.path.join(RESULTS, "gift.json")),
     ("PRESENT-80 (full-round)", os.path.join(EXP, "present.py"),
      os.path.join(RESULTS, "present.json")),
+    ("TEA (full-round)", os.path.join(EXP, "tea.py"),
+     os.path.join(RESULTS, "tea.json")),
 ]
 
 
@@ -66,6 +68,7 @@ def summarize():
     tf = load(os.path.join(RESULTS, "threefish256.json"))
     gift = load(os.path.join(RESULTS, "gift.json"))
     present = load(os.path.join(RESULTS, "present.json"))
+    tea = load(os.path.join(RESULTS, "tea.json"))
 
     # Speck 32/64: prefer the 3-seed mean Z from the core reproduction (C1).
     z_speck32 = core["C1"]["mean_z"]
@@ -82,6 +85,8 @@ def summarize():
     rows.append(("GIFT-64", 28, "permutation cycle", gift["gift64_full_round_z"]))
     rows.append(("GIFT-128", 40, "permutation cycle", gift["gift128_full_round_z"]))
     rows.append(("PRESENT-80", 31, "permutation cycle", present["full_round_z"]))
+    rows.append(("TEA", tea["result"]["full_rounds"], "Feistel self-XOR",
+                tea["result"]["mean_z_N200k"]))
 
     print("\n" + "=" * 78)
     print("  F8 FULL-ROUND DISTINGUISHERS — SUMMARY")

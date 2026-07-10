@@ -1,12 +1,12 @@
-# F8 — Cross-Round Carry-Leak Distinguishers
+# F8 — Full-Round Known-Key Cross-Round Distinguishers
 
-**F8** is a cross-round mutual-information test that detects persistent carry leakage in block ciphers, and shows it surviving at **full round count** across four cipher families.
+**F8** is a cross-round mutual-information test that finds structural, non-decaying signal surviving at **full round count**, across two independent architectural mechanisms and nine ciphers.
 
-Author: **David Tom Foss** ([ORCID 0009-0004-0289-7154](https://orcid.org/0009-0004-0289-7154)) · david@foss.com.de
+Author: **David Tom Foss**
 
 ## The test
 
-Generate the cipher output at round `R` and at round `R+1` with the **same key and counter**. XOR the two outputs, and measure the mutual information (MI) between the bits of the round-`R` output and the bits of that cross-round XOR difference. Score the observed MI against a permutation null to get a Z-score. A structural carry leak shows `Z >> 3` that **does not decay as more rounds are added**.
+Generate the cipher output at round `R` and at round `R+1` with the **same key and counter**. XOR the two outputs, and measure the mutual information (MI) between the bits of the round-`R` output and the bits of that cross-round XOR difference. Score the observed MI against a permutation null to get a Z-score. A structural leak shows `Z >> 3` that **does not decay as more rounds are added**, and — critically — **grows with sample size** (a real signal scales roughly as `Z ~ sqrt(N)`; a max-over-many-cells artifact does not).
 
 ## Full-round distinguishers
 
@@ -22,10 +22,23 @@ Generate the cipher output at round `R` and at round `R+1` with the **same key a
 | GIFT-64         |   28   | permutation cycle   |   +676   | `experiments/gift.py` |
 | GIFT-128        |   40   | permutation cycle   |   +275   | `experiments/gift.py` |
 | PRESENT-80      |   31   | permutation cycle   |  +1183   | `experiments/present.py` |
+| TEA             |   32   | Feistel self-XOR    |   +499   | `experiments/tea.py` |
 
-Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). Threefish-256 reaches MI = 0.6931 = ln 2 on bit 0, the information-theoretic maximum for a single bit. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs.
+Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). Threefish-256 reaches MI = 0.6931 = ln 2 on bit 0, the information-theoretic maximum for a single bit. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs. TEA's Z is confirmed by N-scaling (Z=+40.6 at N=20,000 → +498.9 at N=200,000, a 12.3× growth — well above the ~3.2× expected for a real signal at 10× the sample size, and robust across 5 independent seeds).
 
-## The F8 signal (Speck 32/64)
+## Three architectural mechanisms
+
+F8's signal always requires the same underlying condition: **a state variable meeting a transform of itself, or an addition recurring at a fixed position, across the round boundary.** Never MI(operand; raw addition output) alone — that quantity is algebraically zero for independent operands, at every bit position, regardless of cipher.
+
+1. **β-masking (Speck).** `ROL(y, β)` masks the low β bits of the addition output. The remaining `ws − β` bits carry the addition's carry correlation uniformly, landing on an α-shifted diagonal.
+2. **Raw carry + rotation-spread (Threefish-256).** The permutation keeps each MIX pair's addition at a fixed word position every round — consecutive additions over the same evolving data expose the carry directly (MI = ln 2 on bit 0), then the cipher's own rotations spread it across all 64 bit positions.
+3. **Feistel self-XOR (TEA).** A single addition (`y += A ^ B ^ C`) applied to the XOR of three terms, each a transform of the *other* branch — the two branches occupy fixed positions and alternate roles every round, exposing the addition's carry chain the same way β-masking does.
+
+For the SPN ciphers (GIFT, PRESENT), the same cross-round MI leak is driven instead by the cycle structure of the fixed bit permutation.
+
+**Not every cipher fits this pattern**, and the mechanism above lets you check *before measuring*: a cipher whose round permutation shifts words without ever re-exposing a word to a transform of itself, and without keeping an addition's position fixed, is structurally outside F8's reach — independent of its specific rotation amounts or key schedule.
+
+## The F8 signal in detail (Speck 32/64)
 
 Six properties, all reproduced by `experiments/reproduce_core.py`:
 
@@ -38,18 +51,11 @@ Six properties, all reproduced by `experiments/reproduce_core.py`:
 
 ![C4 leak-rate law](figures/fig2_leak_rate.png)
 
-## The two mechanisms
-
-1. **β-masking (Speck).** The `ROL(y, β)` in the round function masks the low β bits of the addition output. The remaining `ws − β` bits carry the addition's carry correlation uniformly, landing on the α-shifted diagonal.
-2. **Raw carry + rotation-spread (Threefish-256).** The modular-addition output is exposed directly, so the low carry bit is fully determined across the round boundary (MI = ln 2 on bit 0). The cipher's own rotations then spread that carry correlation across all 64 bit positions.
-
-For the SPN ciphers (GIFT, PRESENT), the same cross-round MI leak is driven by the cycle structure of the fixed bit permutation rather than by modular addition.
-
 ## Quick start
 
 ```bash
 pip install -e .
-python reproduce.py          # runs everything, prints the summary table (~1.5 min)
+python reproduce.py          # runs everything, prints the summary table
 ```
 
 Run a single cipher directly:
@@ -60,6 +66,7 @@ python experiments/speck_variants.py     # all 4 Speck variants, full round, enc
 python experiments/threefish256.py       # Threefish-256, 72 rounds
 python experiments/gift.py               # GIFT-64 / GIFT-128
 python experiments/present.py            # PRESENT-80
+python experiments/tea.py                # TEA, 32 rounds
 ```
 
 Each script writes a JSON result under `results/`. To regenerate the figures:
