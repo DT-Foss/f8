@@ -1,6 +1,6 @@
 # F8 — Full-Round Known-Key Cross-Round Distinguishers
 
-**F8** is a cross-round mutual-information test that finds structural, non-decaying signal surviving at **full round count**, across four independent architectural mechanisms and ten ciphers.
+**F8** is a cross-round mutual-information test that finds structural, non-decaying signal surviving at **full round count**, across four independent architectural mechanisms and eleven ciphers.
 
 Author: **David Tom Foss**
 
@@ -25,8 +25,9 @@ Generate the cipher output at round `R` and at round `R+1` with the **same key a
 | PRESENT-80      |   31   | permutation cycle   |  +1183   | `experiments/present.py` |
 | TEA             |   32   | Feistel self-XOR    |   +499   | `experiments/tea.py` |
 | RC5-32/12/16    |   12   | Feistel self-XOR    |   +221   | `experiments/rc5.py` |
+| RC5-64/24/24    |   24   | Feistel self-XOR    |   +444   | `experiments/rc5_64.py` |
 
-Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). Threefish-256 reaches MI = 0.6931 = ln 2 on bit 0, the information-theoretic maximum for a single bit. Threefish-1024 reaches the same ln 2 maximum, N-scaling confirmed (Z grows +25,972 → +483,069 across N=20,000 → 400,000 at the identified cell) — see the mechanism note below on why this reverses the naive "more words in the Threefish family means more immune" reading of Threefish-256 vs. Threefish-512. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs. TEA's and RC5's Z are confirmed by N-scaling (TEA: +40.6 at N=20,000 → +498.9 at N=200,000, 12.3× growth; RC5: +42.1 → +220.7, 5.2× growth — both well above the ~3.2× expected for a real signal at 10× the sample size, and robust across 5 independent seeds).
+Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). Threefish-256 reaches MI = 0.6931 = ln 2 on bit 0, the information-theoretic maximum for a single bit. Threefish-1024 reaches the same ln 2 maximum, N-scaling confirmed (Z grows +25,972 → +483,069 across N=20,000 → 400,000 at the identified cell) — see the mechanism note below on why this reverses the naive "more words in the Threefish family means more immune" reading of Threefish-256 vs. Threefish-512. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs. TEA's and RC5's Z are confirmed by N-scaling (TEA: +40.6 at N=20,000 → +498.9 at N=200,000, 12.3× growth; RC5: +42.1 → +220.7, 5.2× growth — both well above the ~3.2× expected for a real signal at 10× the sample size, and robust across 5 independent seeds). RC5-64/24/24 doubles RC5's word width and confirms the same mechanism generalizes across w: the per-bit MI is roughly two orders of magnitude smaller than at w=32, so the signal only becomes unambiguous at larger sample sizes (Z grows +18.1 at N=8,000 → +444.0 at N=800,000, a 24.5× overall increase, with the same hit cell — the B branch feeding into A — at every sample size tested).
 
 ## Four architectural mechanisms
 
@@ -35,7 +36,7 @@ F8's signal always requires the same underlying condition: **a state variable me
 1. **β-masking (Speck).** `ROL(y, β)` masks the low β bits of the addition output. The remaining `ws − β` bits carry the addition's carry correlation uniformly, landing on an α-shifted diagonal.
 2. **Raw carry + rotation-spread (Threefish-256).** The permutation keeps each MIX pair's addition at a fixed word position every round — consecutive additions over the same evolving data expose the carry directly (MI = ln 2 on bit 0), then the cipher's own rotations spread it across all 64 bit positions.
 3. **Permutation fixed-point carry retention (Threefish-1024).** Bit 0 of any modular addition has no carry-in — a universal, cipher-independent fact, invisible on its own (an isolated MIX call shows no signal at bit 0). But Threefish-1024's own 16-word permutation (independently specified in the Skein v1.3 spec, not derived from the 512-bit one) has two genuine **fixed points**: two of its eight addition-sum outputs land back at their exact starting slot, every single round, for all 80 rounds. At those two slots only, the trivial bit-0 fact accumulates undisturbed instead of being scattered — reaching MI = ln 2 exactly, confirmed absent at every other slot (checked directly: slots in longer permutation cycles show zero signal, matching the mechanism precisely). This also refines this project's earlier Cross-Pair Fraction (CPF) result: Threefish-1024's permutation has CPF = 0.750 (comfortably above the 0.625 threshold that predicted immunity for Threefish-512, whose own permutation reaches CPF = 1.000) — CPF crossing pairs is necessary but not sufficient; a permutation can cross pairs on average while still fixing individual slots in place.
-4. **Feistel self-XOR (TEA, RC5).** A single addition applied directly to a transform of the *other* branch, with its result used immediately as the new branch value — no foreign XOR interrupts between the addition and the next round consuming it. TEA: `y += (z<<4)^(z+sum)^(z>>5)`. RC5: `A = ROTL(A^B, B) + S[2i]`. Both branches occupy fixed positions and alternate roles every round, exposing the addition's carry chain the same way β-masking does. (Ciphers with the *same* fixed-position self-reference but a foreign XOR *between* nested additions — XTEA, the Alzette ARX-box used in SPARKLE — do not show this signal; the foreign XOR breaks the self-reference the mechanism depends on.)
+4. **Feistel self-XOR (TEA, RC5, RC5-64).** A single addition applied directly to a transform of the *other* branch, with its result used immediately as the new branch value — no foreign XOR interrupts between the addition and the next round consuming it. TEA: `y += (z<<4)^(z+sum)^(z>>5)`. RC5: `A = ROTL(A^B, B) + S[2i]`. Both branches occupy fixed positions and alternate roles every round, exposing the addition's carry chain the same way β-masking does. This mechanism is provably word-width-independent — RC5-64/24/24 (doubling the word width to 64 bits) shows the identical leak, just with a smaller per-bit MI that needs a larger sample size to separate from noise. (Ciphers with the *same* fixed-position self-reference but a foreign XOR *between* nested additions — XTEA, the Alzette ARX-box used in SPARKLE — do not show this signal; the foreign XOR breaks the self-reference the mechanism depends on.)
 
 For the SPN ciphers (GIFT, PRESENT), the same cross-round MI leak is driven instead by the cycle structure of the fixed bit permutation.
 
@@ -72,6 +73,7 @@ python experiments/gift.py               # GIFT-64 / GIFT-128
 python experiments/present.py            # PRESENT-80
 python experiments/tea.py                # TEA, 32 rounds
 python experiments/rc5.py                # RC5-32/12/16
+python experiments/rc5_64.py             # RC5-64/24/24
 ```
 
 Each script writes a JSON result under `results/`. To regenerate the figures:

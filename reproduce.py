@@ -40,6 +40,8 @@ EXPERIMENTS = [
      os.path.join(RESULTS, "tea.json")),
     ("RC5-32/12/16 (full-round)", os.path.join(EXP, "rc5.py"),
      os.path.join(RESULTS, "rc5.json")),
+    ("RC5-64/24/24 (full-round)", os.path.join(EXP, "rc5_64.py"),
+     os.path.join(RESULTS, "rc5_64.json")),
 ]
 
 
@@ -75,6 +77,7 @@ def summarize():
     present = load(os.path.join(RESULTS, "present.json"))
     tea = load(os.path.join(RESULTS, "tea.json"))
     rc5 = load(os.path.join(RESULTS, "rc5.json"))
+    rc5_64 = load(os.path.join(RESULTS, "rc5_64.json"))
 
     # Speck 32/64: prefer the 3-seed mean Z from the core reproduction (C1).
     z_speck32 = core["C1"]["mean_z"]
@@ -96,6 +99,8 @@ def summarize():
                 tea["result"]["mean_z_N200k"]))
     rows.append(("RC5-32/12/16", rc5["result"]["full_rounds"], "Feistel self-XOR",
                 rc5["result"]["mean_z_N200k"]))
+    rows.append(("RC5-64/24/24", 24, "Feistel self-XOR",
+                rc5_64["n_scaling_fullround"]["mean_z"][-1]))
 
     print("\n" + "=" * 78)
     print("  F8 FULL-ROUND DISTINGUISHERS — SUMMARY")
