@@ -87,4 +87,4 @@ Dependencies: `numpy`, `scipy` (plus `matplotlib` for the figures). Every script
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+BSD-3
