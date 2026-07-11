@@ -32,6 +32,7 @@ REFERENCE_Z = [
     ("Speck 64/128", 27, "beta-masking", 1165),
     ("Speck 128/256", 34, "beta-masking", 1776),
     ("Threefish-256", 72, "raw carry", 16302),
+    ("Threefish-1024", 80, "permutation fixed-point", 16537),
     ("GIFT-64", 28, "permutation cycle", 676),
     ("GIFT-128", 40, "permutation cycle", 275),
     ("PRESENT-80", 31, "permutation cycle", 1183),
@@ -40,10 +41,11 @@ REFERENCE_Z = [
 ]
 
 MECH_COLOR = {
-    "beta-masking": "#2563eb",        # blue
-    "raw carry": "#dc2626",           # red
-    "permutation cycle": "#16a34a",   # green
-    "Feistel self-XOR": "#9333ea",    # purple
+    "beta-masking": "#2563eb",             # blue
+    "raw carry": "#dc2626",                # red
+    "permutation fixed-point": "#ea580c",  # orange
+    "permutation cycle": "#16a34a",        # green
+    "Feistel self-XOR": "#9333ea",         # purple
 }
 
 
@@ -60,6 +62,7 @@ def collect_zscores():
     core = load_json("core_reproduction.json")
     speck = load_json("speck_variants.json")
     tf = load_json("threefish256.json")
+    tf1024 = load_json("threefish1024.json")
     gift = load_json("gift.json")
     present = load_json("present.json")
     tea = load_json("tea.json")
@@ -73,6 +76,8 @@ def collect_zscores():
         rows.append((name, full_r, "beta-masking",
                      v["rounds"][str(v["full_rounds"])]["encrypt"]["mean_Z"]))
     rows.append(("Threefish-256", tf["rounds"], "raw carry", tf["max_z"]))
+    if tf1024:
+        rows.append(("Threefish-1024", tf1024["rounds"], "permutation fixed-point", tf1024["max_z"]))
     rows.append(("GIFT-64", 28, "permutation cycle", gift["gift64_full_round_z"]))
     rows.append(("GIFT-128", 40, "permutation cycle", gift["gift128_full_round_z"]))
     rows.append(("PRESENT-80", 31, "permutation cycle", present["full_round_z"]))

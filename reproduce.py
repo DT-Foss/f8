@@ -2,9 +2,9 @@
 """Master reproduction script for the F8 full-round distinguishers.
 
 Runs each experiment in turn (core Speck 32/64 properties, all four Speck
-variants, Threefish-256, GIFT-64/128, PRESENT-80, TEA), then prints one
-summary table of the full-round Z-scores. Each experiment also writes its
-own JSON result under results/.
+variants, Threefish-256, Threefish-1024, GIFT-64/128, PRESENT-80, TEA,
+RC5), then prints one summary table of the full-round Z-scores. Each
+experiment also writes its own JSON result under results/.
 
 Usage:
     python reproduce.py
@@ -30,6 +30,8 @@ EXPERIMENTS = [
      os.path.join(RESULTS, "speck_variants.json")),
     ("Threefish-256 (full-round)", os.path.join(EXP, "threefish256.py"),
      os.path.join(RESULTS, "threefish256.json")),
+    ("Threefish-1024 (full-round)", os.path.join(EXP, "threefish1024.py"),
+     os.path.join(RESULTS, "threefish1024.json")),
     ("GIFT-64 / GIFT-128 (full-round)", os.path.join(EXP, "gift.py"),
      os.path.join(RESULTS, "gift.json")),
     ("PRESENT-80 (full-round)", os.path.join(EXP, "present.py"),
@@ -68,6 +70,7 @@ def summarize():
     core = load(os.path.join(RESULTS, "core_reproduction.json"))
     speck = load(os.path.join(RESULTS, "speck_variants.json"))
     tf = load(os.path.join(RESULTS, "threefish256.json"))
+    tf1024 = load(os.path.join(RESULTS, "threefish1024.json"))
     gift = load(os.path.join(RESULTS, "gift.json"))
     present = load(os.path.join(RESULTS, "present.json"))
     tea = load(os.path.join(RESULTS, "tea.json"))
@@ -85,6 +88,7 @@ def summarize():
         rows.append((name, full_r, "beta-masking", enc_z))
 
     rows.append(("Threefish-256", tf["rounds"], "raw carry", tf["max_z"]))
+    rows.append(("Threefish-1024", tf1024["rounds"], "permutation fixed-point", tf1024["max_z"]))
     rows.append(("GIFT-64", 28, "permutation cycle", gift["gift64_full_round_z"]))
     rows.append(("GIFT-128", 40, "permutation cycle", gift["gift128_full_round_z"]))
     rows.append(("PRESENT-80", 31, "permutation cycle", present["full_round_z"]))
@@ -96,11 +100,11 @@ def summarize():
     print("\n" + "=" * 78)
     print("  F8 FULL-ROUND DISTINGUISHERS — SUMMARY")
     print("=" * 78)
-    print(f"  {'Cipher':<16}{'Rounds':>8}{'Mechanism':>22}{'Z-score':>16}")
-    print("  " + "-" * 60)
+    print(f"  {'Cipher':<16}{'Rounds':>8}{'Mechanism':>26}{'Z-score':>16}")
+    print("  " + "-" * 64)
     for cipher, rounds, mech, z in rows:
-        print(f"  {cipher:<16}{rounds:>8}{mech:>22}{z:>+16.0f}")
-    print("  " + "-" * 60)
+        print(f"  {cipher:<16}{rounds:>8}{mech:>26}{z:>+16.0f}")
+    print("  " + "-" * 64)
     print("  Permutation-null threshold for a structural leak: Z >> 3.")
     print("=" * 78)
 

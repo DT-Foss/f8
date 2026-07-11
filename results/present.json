@@ -136,40 +136,40 @@
       "R": 1,
       "Z": 1341.43,
       "MI": 0.541755,
-      "elapsed_s": 6.0
+      "elapsed_s": 5.6
     },
     {
       "R": 2,
       "Z": 1251.34,
       "MI": 0.579164,
-      "elapsed_s": 5.8
+      "elapsed_s": 5.5
     },
     {
       "R": 4,
       "Z": 1173.59,
       "MI": 0.552823,
-      "elapsed_s": 5.7
+      "elapsed_s": 5.5
     },
     {
       "R": 8,
       "Z": 1231.43,
       "MI": 0.556157,
-      "elapsed_s": 5.7
+      "elapsed_s": 5.5
     },
     {
       "R": 16,
       "Z": 1123.75,
       "MI": 0.567255,
-      "elapsed_s": 5.8
+      "elapsed_s": 5.5
     },
     {
       "R": 31,
       "Z": 1183.1,
       "MI": 0.55699,
-      "elapsed_s": 5.8
+      "elapsed_s": 5.6
     }
   ],
   "max_z": 1341.43,
   "full_round_z": 1183.1,
-  "total_time_s": 34.8
+  "total_time_s": 33.1
 }

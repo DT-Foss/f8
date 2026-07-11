@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-11T00:46:30",
+  "timestamp": "2026-07-11T02:38:47",
   "N": 20000,
   "C1": {
     "claim": "C1",
@@ -125,5 +125,5 @@
     "min_z": 2979.1,
     "verdict": "CONFIRMED"
   },
-  "elapsed_seconds": 2.5
+  "elapsed_seconds": 2.7
 }
