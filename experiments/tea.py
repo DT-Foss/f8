@@ -27,12 +27,24 @@ terms, each a transform of the other branch. This exposes the addition's
 carry chain directly across the round boundary — a fixed-position,
 self-referential structure closely related to Speck's β-masking
 mechanism and to Threefish-256's fixed-pair addition.
+
+STATISTICS: reported with BOTH the naive per-cell Z (`f8_max_z`, kept for
+comparability with earlier revisions of this repo) and the familywise-
+corrected max-statistic Z (`maxstat.maxstat_z`), which scores the best of
+K cells against the distribution of the best of K cells under permutation.
+The naive Z is inflated because it compares a max-over-K against a
+single-cell null; see experiments/maxstat.py. A random-data control is run
+alongside and must land near zero for the measurement to be meaningful.
 """
 import json
 import math
 import os
+import sys
 
 import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from maxstat import maxstat_z, random_control
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS = os.path.join(REPO, "results")
@@ -130,7 +142,7 @@ def f8_max_z(state_R, state_R1, n_bits=32, n_perm=20, seed=99):
     return best["z"], best
 
 
-def measure_at(N, R, seed):
+def measure_at(N, R, seed, corrected=False):
     rng = np.random.default_rng(1000 + seed)
     key = tuple(np.uint64(int(rng.integers(0, 1 << 32))) for _ in range(4))
     rng2 = np.random.default_rng(seed)
@@ -138,6 +150,8 @@ def measure_at(N, R, seed):
     z0 = rng2.integers(0, 1 << 32, size=N, dtype=np.uint64)
     yR, zR = tea_encrypt_vec(y0, z0, key, R)
     yR1, zR1 = tea_encrypt_vec(y0, z0, key, R + 1)
+    if corrected:
+        return maxstat_z([yR, zR], [yR1, zR1], n_bits=32, n_perm=25, seed=99 + seed)
     z, detail = f8_max_z([yR, zR], [yR1, zR1], seed=99 + seed)
     return z, detail
 
@@ -145,22 +159,31 @@ def measure_at(N, R, seed):
 def run(seeds=(0, 1, 2)):
     N_small, N_large = 20000, 200000
 
-    def mean_at(N):
+    def mean_at(N, corrected=False):
         zs, details = [], []
         for seed in seeds:
-            z, detail = measure_at(N, FULL_ROUNDS, seed)
+            z, detail = measure_at(N, FULL_ROUNDS, seed, corrected=corrected)
             zs.append(z)
             details.append(detail)
         return float(np.mean(zs)), zs, details
 
     mean_small, zs_small, det_small = mean_at(N_small)
     mean_large, zs_large, det_large = mean_at(N_large)
+    # Familywise-corrected statistic at the larger sample size, plus the
+    # random-data control that calibrates it.
+    corr_large, corr_zs, corr_det = mean_at(N_large, corrected=True)
+    ctrl_z, ctrl_detail = random_control(2, 32, N_large, seed=4242, word_bits=32)
 
     return {
         "full_rounds": FULL_ROUNDS,
         "mean_z_N20k": mean_small, "z_per_seed_N20k": zs_small, "detail_N20k": det_small,
         "mean_z_N200k": mean_large, "z_per_seed_N200k": zs_large, "detail_N200k": det_large,
         "z_ratio_10x_N": mean_large / mean_small if mean_small > 0 else None,
+        "corrected_mean_z_N200k": corr_large,
+        "corrected_z_per_seed_N200k": corr_zs,
+        "corrected_detail_N200k": corr_det,
+        "random_control_z": float(ctrl_z),
+        "random_control_detail": ctrl_detail,
     }
 
 
@@ -177,12 +200,15 @@ def main():
 
     result = run()
     print(f"\nFull rounds ({result['full_rounds']}): "
-          f"max-Z @N=20k={result['mean_z_N20k']:+.1f}, "
+          f"naive max-Z @N=20k={result['mean_z_N20k']:+.1f}, "
           f"@N=200k={result['mean_z_N200k']:+.1f}, "
           f"10x-N ratio={result['z_ratio_10x_N']:.2f}")
+    print(f"Familywise-corrected Z @N=200k = {result['corrected_mean_z_N200k']:+.1f}")
+    print(f"Random-data control        Z = {result['random_control_z']:+.2f}  "
+          f"(must be near 0)")
     print(f"\nRESULT: TEA leaks at full {result['full_rounds']} rounds on F8 "
-          f"(mean Z={result['mean_z_N200k']:+.1f}, N-scaling ratio="
-          f"{result['z_ratio_10x_N']:.2f}x).")
+          f"(corrected Z={result['corrected_mean_z_N200k']:+.1f}, "
+          f"control={result['random_control_z']:+.2f}).")
 
     output = {
         "cipher": "TEA (Wheeler & Needham 1994)",

@@ -13,11 +13,16 @@ no foreign XOR interrupting before the next round consumes it — a
 mechanism that is algebraically w-independent (only the modulus 2^w
 and the rotation-amount mask change).
 
-RESULT: LEAKS at full rounds, same as w=32. The per-bit MI is about two
-orders of magnitude smaller than at w=32, so the leak only becomes
-unambiguous once N is pushed well past this repo's usual sample range
-(confirmed up to N=800,000, with the same hit cell — B feeding into A —
-at every sample size tested).
+RESULT: LEAKS at full rounds, same as w=32, but WEAKLY. The per-bit MI is
+about two orders of magnitude smaller than at w=32. Under the familywise-
+corrected max-statistic (experiments/maxstat.py) this is the weakest of the
+twelve distinguishers in this repo: corrected Z is roughly an order of
+magnitude below the naive per-cell Z, and the winning cell is NOT stable
+across sample sizes -- it moves between bit positions from one N to the
+next, which is the signature of a near-noise-floor measurement. The signal
+is real (the random-data control sits at ~0 while this does not), but it
+should be read as "present and consistent with the w=32 mechanism", not as
+a strong distinguisher.
 
 IMPLEMENTATION VERIFIED against the official test vector from
 draft-krovetz-rc6-rc5-vectors-00 (the standard secondary source for
@@ -30,8 +35,12 @@ encrypt/decrypt round-trip check.
 import json
 import math
 import os
+import sys
 
 import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from maxstat import maxstat_z, random_control
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS = os.path.join(REPO, "results")
@@ -224,7 +233,7 @@ def f8_max_z(state_R, state_R1, n_bits=64, n_perm=15, seed=99):
     return best["z"], best
 
 
-def measure_at(N, R, seed):
+def measure_at(N, R, seed, corrected=False):
     rng = np.random.default_rng(1000 + seed)
     key = bytes(int(x) for x in rng.integers(0, 256, size=24))  # 24 bytes = RC5-64/*/24 nominal
     S = key_expand(key, R=max(R, FULL_ROUNDS) + 1)
@@ -233,6 +242,8 @@ def measure_at(N, R, seed):
     B0 = rng2.integers(0, 1 << 64, size=N, dtype=np.uint64)
     AR, BR = rc5_encrypt_vec(A0, B0, S, R)
     AR1, BR1 = rc5_encrypt_vec(A0, B0, S, R + 1)
+    if corrected:
+        return maxstat_z([AR, BR], [AR1, BR1], n_bits=64, n_perm=20, seed=99 + seed)
     z, detail = f8_max_z([AR, BR], [AR1, BR1], seed=99 + seed)
     return z, detail
 
@@ -279,34 +290,38 @@ if __name__ == "__main__":
         print(f"    best cells: " + ", ".join(
             f"(src={d['src']},tgt={d['tgt']},bit={d['bit']},MI={d['mi']:.4f})" for d in details))
     ratios = [means[i] / means[i - 1] for i in range(1, len(means))]
-    # Note: the naive "every consecutive ratio > 1.5" gate is too strict
-    # here -- the first few points (N=8k-200k) sit close to the noise
-    # floor with a genuinely small per-bit MI (~1e-4), so early ratios can
-    # dip below 1.5 by chance even for a real signal. The robust check
-    # (used throughout this session when an early gate is ambiguous) is
-    # whether Z keeps growing with N over the FULL extended range rather
-    # than saturating -- confirmed decisively below (N=800k reaches
-    # mean Z=444, roughly 25x the N=8k value, with the consistent hit
-    # cell src=1(B)->tgt=0(A) at every single N tested, matching EXP-75's
-    # RC5-32 hit cell exactly).
+    # N-scaling alone does NOT establish a signal here: the naive per-cell
+    # statistic takes a max over K cells but scores it against a single-cell
+    # null, and that selection bias also grows with N. The decisive test is
+    # the familywise-corrected statistic together with a random-data control
+    # (computed below): the control must sit at ~0 while the cipher does not.
     overall_growth = means[-1] / means[0]
-    leak = overall_growth > 5.0 and means[-1] > 100
+
+    corr_zs = [measure_at(200000, FULL_ROUNDS, s_, corrected=True)[0] for s_ in range(3)]
+    corrected_z = float(np.mean(corr_zs))
+    ctrl_z, ctrl_detail = random_control(2, 64, 200000, seed=4242, word_bits=64)
+    print(f"\n  Familywise-corrected Z @N=200k: {corrected_z:+.1f} "
+          f"(per seed: {[round(z, 1) for z in corr_zs]})")
+    print(f"  Random-data control        Z: {ctrl_z:+.2f}  (must be near 0)")
+
+    leak = corrected_z > 10.0 and abs(ctrl_z) < 5.0
 
     print("\n" + "=" * 96)
     print("VERDICT")
     print("=" * 96)
-    print(f"  {'LEAK CONFIRMED' if leak else 'No N-scaling-confirmed signal'} "
-          f"(mean_z across N: {means}, ratios: {ratios}, "
-          f"overall N=8k->N=800k growth: {overall_growth:.1f}x)")
+    print(f"  {'LEAK CONFIRMED' if leak else 'No corrected-statistic signal'} "
+          f"(naive mean_z across N: {means}, "
+          f"corrected Z: {corrected_z:+.1f}, control: {ctrl_z:+.2f})")
     if leak:
-        print(f"\n  OVERALL: RC5-64/24/24 LEAKS at full rounds, confirming the EXP-75")
-        print(f"  whole-round shift-structural self-XOR criterion generalizes cleanly")
-        print(f"  across word width -- the mechanism (addition result used directly as")
-        print(f"  the new branch value, no foreign XOR interrupting) is w-independent,")
-        print(f"  exactly as the algebraic form of the criterion predicts. The per-bit")
-        print(f"  MI is much smaller than at w=32 (~1e-4 vs. much larger at w=32),")
-        print(f"  which is why the early sample sizes looked borderline -- pushing N")
-        print(f"  far enough (up to 800k) was necessary to see the unambiguous trend.")
+        print(f"\n  OVERALL: RC5-64/24/24 leaks at full rounds -- WEAKLY. This is the")
+        print(f"  weakest of the twelve distinguishers in this repo. It confirms that")
+        print(f"  the shift-structural self-XOR mechanism generalizes across word")
+        print(f"  width (the addition result is used directly as the new branch value,")
+        print(f"  with no foreign XOR interrupting), but at w=64 the per-bit MI is")
+        print(f"  about two orders of magnitude smaller than at w=32. The winning cell")
+        print(f"  is not stable across sample sizes, which is expected this close to")
+        print(f"  the noise floor. Read as 'present, consistent with the w=32")
+        print(f"  mechanism', not as a strong distinguisher.")
     else:
         print(f"\n  OVERALL: RC5-64/24/24 shows NO N-scaling-confirmed signal at full")
         print(f"  rounds, in contrast to RC5-32/12/16's confirmed leak (EXP-75) -- this")
@@ -324,7 +339,12 @@ if __name__ == "__main__":
         "standard_f8_sweep": sweep,
         "n_scaling_fullround": {"Ns": ns_values, "mean_z": means, "ratios": ratios,
                                  "overall_growth_8k_to_800k": overall_growth},
+        "corrected_z_N200k": corrected_z,
+        "corrected_z_per_seed": corr_zs,
+        "random_control_z": float(ctrl_z),
+        "random_control_detail": ctrl_detail,
         "leak_confirmed": leak,
+        "strength": "weak -- weakest distinguisher in this repo",
     }
 
     def _default(o):

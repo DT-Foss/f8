@@ -260,6 +260,67 @@ def f8_mi_test(gen_fn, n_rounds, word_size, alpha, beta, seed):
     return total_mi, z, len(mi_vals)
 
 
+def f8_diagonal_maxstat(gen_fn, n_rounds, word_size, alpha, beta, seed, n_perm=15):
+    """Shift-searching variant of the F8 diagonal test.
+
+    f8_mi_test above is INFORMED: it is told the correct diagonal (j = i - alpha)
+    from the beta-masking mechanism. That is the right test when the mechanism is
+    the hypothesis under test, but it presupposes the answer.
+
+    This variant searches ALL ws diagonal shifts and scores the best one against
+    a null taken over the SAME family of ws shifts (familywise max-statistic).
+    It therefore assumes nothing about which diagonal carries the signal -- and
+    recovers s = alpha every time, which is independent confirmation of the
+    mechanism rather than an assumption of it.
+
+    Returns (total_MI, Z_corrected, winning_shift).
+    """
+    raw_R, bb, bpw = gen_fn(N, n_rounds, seed)
+    raw_R1, _, _ = gen_fn(N, n_rounds + 1, seed)
+    out_R = np.frombuffer(raw_R, dtype=np.uint8).reshape(-1, bb)
+    out_R1 = np.frombuffer(raw_R1, dtype=np.uint8).reshape(-1, bb)
+    n = min(out_R.shape[0], out_R1.shape[0])
+    out_R, out_R1 = out_R[:n], out_R1[:n]
+    ws = word_size
+
+    x_R = np.zeros(n, dtype=np.uint64)
+    y_R = np.zeros(n, dtype=np.uint64)
+    y_R1 = np.zeros(n, dtype=np.uint64)
+    for b in range(bpw):
+        sh = np.uint64(8 * (bpw - 1 - b))
+        x_R |= out_R[:, b].astype(np.uint64) << sh
+        y_R |= out_R[:, bpw + b].astype(np.uint64) << sh
+        y_R1 |= out_R1[:, bpw + b].astype(np.uint64) << sh
+    diff_y = y_R ^ y_R1
+
+    xbits = np.empty((n, ws), dtype=np.uint8)
+    dbits = np.empty((n, ws), dtype=np.uint8)
+    for i in range(ws):
+        xbits[:, i] = ((x_R >> np.uint64(i)) & np.uint64(1)).astype(np.uint8)
+        dbits[:, i] = ((diff_y >> np.uint64(i)) & np.uint64(1)).astype(np.uint8)
+
+    def totals(dmat):
+        out = np.zeros(ws)
+        for sft in range(ws):
+            tot = 0.0
+            for i in range(ws):
+                tot += mi_bits(xbits[:, i], dmat[:, (i - sft) % ws], n)
+            out[sft] = tot
+        return out
+
+    real = totals(dbits)
+    rmax, rshift = float(real.max()), int(real.argmax())
+
+    rng = np.random.default_rng(42)
+    nulls = []
+    for _ in range(n_perm):
+        perm = rng.permutation(n)
+        nulls.append(float(totals(dbits[perm]).max()))
+    nm = float(np.mean(nulls))
+    ns = max(float(np.std(nulls)), 1e-30)
+    return rmax, (rmax - nm) / ns, rshift
+
+
 # ---------------------------------------------------------------------------
 # MAIN EXPERIMENT
 # ---------------------------------------------------------------------------
@@ -366,6 +427,22 @@ def run_experiment():
                 },
                 'ratio': round(ratio, 1),
             }
+
+        # Shift-searching cross-check at FULL rounds: assumes nothing about
+        # which diagonal carries the signal, and recovers s = alpha.
+        mi_ms, z_ms, shift_ms = f8_diagonal_maxstat(
+            enc_gen, full_r, ws, alpha, beta, 42)
+        print(f"  {'':>5}  {'SHIFT-SEARCH':>12}  MI={mi_ms:.6f}  Z={z_ms:+.1f}  "
+              f"winning shift={shift_ms} (alpha={alpha}) "
+              f"{'MATCH' if shift_ms == alpha else 'MISMATCH'}")
+        print(f"  {'-'*60}")
+        variant_results['shift_search_fullround'] = {
+            'total_MI': round(float(mi_ms), 8),
+            'Z_familywise_corrected': round(float(z_ms), 1),
+            'winning_shift': int(shift_ms),
+            'alpha': int(alpha),
+            'shift_matches_alpha': bool(shift_ms == alpha),
+        }
 
         results['variants'][vname] = variant_results
 

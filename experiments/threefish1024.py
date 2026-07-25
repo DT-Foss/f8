@@ -41,8 +41,12 @@ Self-contained: numpy only.
 import json
 import math
 import os
+import sys
 
 import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from maxstat import maxstat_z, random_control
 
 MASK64 = (1 << 64) - 1
 C240 = 0x1BD11BDAA9FC1A22  # Skein key-schedule parity constant
@@ -252,6 +256,14 @@ if __name__ == "__main__":
     print()
     print(f"  Bit-0 MI reaches ln(2) = {math.log(2):.4f} at the two permutation")
     print("  fixed-point slots (0 and 2) -- see module docstring for the mechanism.")
+    print()
+
+    corr_z, corr_detail = maxstat_z(s_R, s_R1, n_bits=4, n_perm=15, seed=99)
+    ctrl_z, ctrl_detail = random_control(4, 4, N, seed=4242, word_bits=64)
+    print(f"  Familywise-corrected Z = {corr_z:+.1f}  "
+          f"(real max MI = {corr_detail['real_max_mi']:.6f}, "
+          f"null max MI = {corr_detail['null_max_mi']:.6f})")
+    print(f"  Random-data control  Z = {ctrl_z:+.2f}  (must be near 0)")
     print("=" * 72)
 
     output = {
@@ -263,6 +275,9 @@ if __name__ == "__main__":
         "cross_pair_fraction": 0.750,
         "max_z": round(best_z, 1),
         "best_pair": best_pair,
+        "corrected_z": round(float(corr_z), 1),
+        "corrected_detail": corr_detail,
+        "random_control_z": round(float(ctrl_z), 2),
         "leaking_pairings": [p for p in all_pairs if p["Z"] > 10],
         "all_pairs": all_pairs,
     }

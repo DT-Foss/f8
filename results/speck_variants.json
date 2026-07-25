@@ -5,8 +5,8 @@
     "N": 20000,
     "seeds": 3,
     "n_perm": 20,
-    "timestamp": "2026-07-11T02:38:49",
-    "elapsed_seconds": 17.5
+    "timestamp": "2026-07-25T20:57:25",
+    "elapsed_seconds": 29.9
   },
   "variants": {
     "Speck 32/64": {
@@ -140,6 +140,13 @@
           },
           "ratio": 10725.2
         }
+      },
+      "shift_search_fullround": {
+        "total_MI": 0.64300896,
+        "Z_familywise_corrected": 3433.2,
+        "winning_shift": 7,
+        "alpha": 7,
+        "shift_matches_alpha": true
       }
     },
     "Speck 48/96": {
@@ -273,6 +280,13 @@
           },
           "ratio": 3490.6
         }
+      },
+      "shift_search_fullround": {
+        "total_MI": 0.23611906,
+        "Z_familywise_corrected": 1385.1,
+        "winning_shift": 8,
+        "alpha": 8,
+        "shift_matches_alpha": true
       }
     },
     "Speck 64/128": {
@@ -406,6 +420,13 @@
           },
           "ratio": 3950.0
         }
+      },
+      "shift_search_fullround": {
+        "total_MI": 0.33368736,
+        "Z_familywise_corrected": 1795.1,
+        "winning_shift": 8,
+        "alpha": 8,
+        "shift_matches_alpha": true
       }
     },
     "Speck 128/256": {
@@ -539,6 +560,13 @@
           },
           "ratio": 9019.8
         }
+      },
+      "shift_search_fullround": {
+        "total_MI": 0.70952748,
+        "Z_familywise_corrected": 3110.1,
+        "winning_shift": 8,
+        "alpha": 8,
+        "shift_matches_alpha": true
       }
     }
   },

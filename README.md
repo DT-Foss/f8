@@ -1,33 +1,54 @@
 # F8 — Full-Round Known-Key Cross-Round Distinguishers
 
-**F8** is a cross-round mutual-information test that finds structural, non-decaying signal surviving at **full round count**, across four independent architectural mechanisms and eleven ciphers.
+**F8** is a cross-round mutual-information test that finds structural, non-decaying signal surviving at **full round count**, across four independent architectural mechanisms and twelve ciphers.
 
 Author: **David Tom Foss**
 
 ## The test
 
-Generate the cipher output at round `R` and at round `R+1` with the **same key and counter**. XOR the two outputs, and measure the mutual information (MI) between the bits of the round-`R` output and the bits of that cross-round XOR difference. Score the observed MI against a permutation null to get a Z-score. A structural leak shows `Z >> 3` that **does not decay as more rounds are added**, and — critically — **grows with sample size** (a real signal scales roughly as `Z ~ sqrt(N)`; a max-over-many-cells artifact does not).
+Generate the cipher output at round `R` and at round `R+1` with the **same key and counter**. XOR the two outputs, and measure the mutual information (MI) between the bits of the round-`R` output and the bits of that cross-round XOR difference. Score the observed MI against a permutation null to get a Z-score. A structural leak shows `Z >> 3` that **does not decay as more rounds are added**.
+
+Every measurement is reported against a **random-data control** run through the identical pipeline: the same statistic, the same cell count, the same null. The control must land near zero. That is what separates a structural signal from a selection artifact — see [Statistics](#statistics) below.
 
 ## Full-round distinguishers
 
+All rounds counts below are the ciphers' **full specified round counts** — Speck 32/64 at its 22 NSA-specified rounds, Threefish-256 at all 72, Threefish-1024 at all 80, with key injection and the official rotation constants throughout.
+
 ![Full-round F8 Z-scores per cipher](figures/fig1_zscores.png)
 
-| Cipher          | Rounds | Mechanism           | Z-score  | Script |
-|-----------------|:------:|---------------------|---------:|--------|
-| Speck 32/64     |   22   | β-masking           |  +4088   | `experiments/reproduce_core.py`, `experiments/speck_variants.py` |
-| Speck 48/96     |   23   | β-masking           |   +918   | `experiments/speck_variants.py` |
-| Speck 64/128    |   27   | β-masking           |  +1165   | `experiments/speck_variants.py` |
-| Speck 128/256   |   34   | β-masking           |  +1776   | `experiments/speck_variants.py` |
-| Threefish-256   |   72   | raw carry           | +16302   | `experiments/threefish256.py` |
-| Threefish-1024  |   80   | permutation fixed-point | +16537 | `experiments/threefish1024.py` |
-| GIFT-64         |   28   | permutation cycle   |   +676   | `experiments/gift.py` |
-| GIFT-128        |   40   | permutation cycle   |   +275   | `experiments/gift.py` |
-| PRESENT-80      |   31   | permutation cycle   |  +1183   | `experiments/present.py` |
-| TEA             |   32   | Feistel self-XOR    |   +499   | `experiments/tea.py` |
-| RC5-32/12/16    |   12   | Feistel self-XOR    |   +221   | `experiments/rc5.py` |
-| RC5-64/24/24    |   24   | Feistel self-XOR    |   +444   | `experiments/rc5_64.py` |
+| Cipher          | Rounds | Mechanism           | Z (naive) | Z (corrected) | Script |
+|-----------------|:------:|---------------------|----------:|--------------:|--------|
+| Threefish-256   |   72   | raw carry           |   +16302  |    **+17592** | `experiments/threefish256.py` |
+| Threefish-1024  |   80   | permutation fixed-point | +16537 |  **+20461** | `experiments/threefish1024.py` |
+| Speck 32/64     |   22   | β-masking           |    +4088  |     **+3433** | `experiments/reproduce_core.py`, `experiments/speck_variants.py` |
+| Speck 128/256   |   34   | β-masking           |    +1776  |     **+3110** | `experiments/speck_variants.py` |
+| Speck 64/128    |   27   | β-masking           |    +1165  |     **+1795** | `experiments/speck_variants.py` |
+| Speck 48/96     |   23   | β-masking           |     +918  |     **+1385** | `experiments/speck_variants.py` |
+| PRESENT-80      |   31   | permutation cycle   |    +1183  |   already correct | `experiments/present.py` |
+| GIFT-64         |   28   | permutation cycle   |     +676  |   already correct | `experiments/gift.py` |
+| GIFT-128        |   40   | permutation cycle   |     +275  |   already correct | `experiments/gift.py` |
+| TEA             |   32   | Feistel self-XOR    |     +499  |      **+216** | `experiments/tea.py` |
+| RC5-32/12/16    |   12   | Feistel self-XOR    |     +221  |      **+112** | `experiments/rc5.py` |
+| RC5-64/24/24    |   24   | Feistel self-XOR    |     +444  |    **+23** (weak) | `experiments/rc5_64.py` |
+| **random control** | — | *none — pure noise* |      +5.8 |      **−0.3** | `experiments/maxstat.py` |
 
-Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). Threefish-256 reaches MI = 0.6931 = ln 2 on bit 0, the information-theoretic maximum for a single bit. Threefish-1024 reaches the same ln 2 maximum, N-scaling confirmed (Z grows +25,972 → +483,069 across N=20,000 → 400,000 at the identified cell) — see the mechanism note below on why this reverses the naive "more words in the Threefish family means more immune" reading of Threefish-256 vs. Threefish-512. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs. TEA's and RC5's Z are confirmed by N-scaling (TEA: +40.6 at N=20,000 → +498.9 at N=200,000, 12.3× growth; RC5: +42.1 → +220.7, 5.2× growth — both well above the ~3.2× expected for a real signal at 10× the sample size, and robust across 5 independent seeds). RC5-64/24/24 doubles RC5's word width and confirms the same mechanism generalizes across w: the per-bit MI is roughly two orders of magnitude smaller than at w=32, so the signal only becomes unambiguous at larger sample sizes (Z grows +18.1 at N=8,000 → +444.0 at N=800,000, a 24.5× overall increase, with the same hit cell — the B branch feeding into A — at every sample size tested).
+Every cipher survives the corrected statistic while the random control collapses to zero.
+
+**Threefish-256 and Threefish-1024 both reach MI = 0.693147 = ln 2 on bit 0** — the information-theoretic maximum for a single bit — at 72 and 80 rounds respectively. That bit is not "statistically detectable"; it is deterministically predictable from the cross-round difference. Null in the same run: 0.000202.
+
+**RC5-64/24/24 is the weakest result here.** Under the corrected statistic it drops to Z ≈ 23, and its winning cell is not stable across sample sizes. It is consistent with the w=32 mechanism generalizing across word width, but it should be read as "present", not as a strong distinguisher.
+
+Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). The corrected Speck column comes from `f8_diagonal_maxstat`, which searches **all** `ws` diagonal shifts and scores the best against a null over that same family. It is told nothing about the mechanism — and recovers `s = α` for all four variants (7, 8, 8, 8 against α = 7, 8, 8, 8). That is independent confirmation of β-masking rather than an assumption of it, and it is why the corrected Z exceeds the naive Z for the wider variants: the informed test in `f8_mi_test` skips the dead-set bits, the shift search does not. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs; both use `f8_mi_test`, whose null already applies the same max-over-targets selection to permuted data, so their published Z-scores need no correction. Cipher implementations are checked against official test vectors before any measurement — Speck against the NSA specification vectors, Threefish against the Skein v1.3 KAT, RC5 against RFC 2040.
+
+## Statistics
+
+**The correction.** Earlier revisions of this repo scored `f8_max_z` — a maximum over K cells (source word × target word × bit) — against a permutation null built from the *winning cell only*. The maximum of K noise draws is systematically larger than any single draw, so that Z is inflated, and the inflation grows with K. Run on pure random data, the naive statistic reports Z ≈ 9–16 at every sample size.
+
+`experiments/maxstat.py` fixes this: it scores `max(MI_real)` against the distribution of `max(MI_permuted)` over the *same* cell set — the standard familywise / max-statistic correction. On random data it returns Z ≈ 0, as it must.
+
+**On N-scaling.** Earlier revisions argued that growth of Z with sample size proves a real signal. That argument does not hold on its own: the selection bias of a max-over-K statistic also grows with N. It has been replaced throughout by the corrected statistic plus a random-data control. The conclusions did not change — every cipher still leaks — but the reasoning is now sound and the magnitudes are honest.
+
+Both columns are published so the correction is auditable. `experiments/maxstat.py` runs its own random-data self-test when executed directly.
 
 ## Four architectural mechanisms
 
@@ -46,7 +67,7 @@ For the SPN ciphers (GIFT, PRESENT), the same cross-round MI leak is driven inst
 
 Six properties, all reproduced by `experiments/reproduce_core.py`:
 
-- **C1 — Full-round distinguisher.** Speck 32/64 at R=22, mean Z = +4088 over 3 seeds.
+- **C1 — Full-round distinguisher.** Speck 32/64 at R=22 (its full NSA-specified round count), mean Z = +4088 over 3 seeds; +3433 under the corrected shift-searching statistic.
 - **C2 — No round decay.** MI is flat across R = 5…22 (spread 5.3 %); the leak rate is constant, it does not diffuse away with more rounds.
 - **C3 — α-shifted diagonal.** The MI concentrates on the α-shifted output diagonal (diag / off-diag ratio ≈ 1350:1), with β dead bits at positions α … α+β−1.
 - **C4 — Exponential leak-rate law.** MI(β) = A·exp(−B·β) with A = 0.5367, B = 1.4131, **R² = 0.999986**.
@@ -74,6 +95,7 @@ python experiments/present.py            # PRESENT-80
 python experiments/tea.py                # TEA, 32 rounds
 python experiments/rc5.py                # RC5-32/12/16
 python experiments/rc5_64.py             # RC5-64/24/24
+python experiments/maxstat.py            # statistic self-test on random data
 ```
 
 Each script writes a JSON result under `results/`. To regenerate the figures:

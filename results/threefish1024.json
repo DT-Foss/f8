@@ -7,6 +7,19 @@
   "cross_pair_fraction": 0.75,
   "max_z": 16537.4,
   "best_pair": "w3->diff_w2",
+  "corrected_z": 20460.8,
+  "corrected_detail": {
+    "z_corrected": 20460.811957146543,
+    "real_max_mi": 0.6931029999092981,
+    "null_max_mi": 0.0003396071792013918,
+    "null_max_std": 3.3858059698756416e-05,
+    "n_cells": 4096,
+    "src_word": 3,
+    "src_bit": 0,
+    "tgt_word": 2,
+    "tgt_bit": 0
+  },
+  "random_control_z": 2.95,
   "leaking_pairings": [
     {
       "src": 1,
