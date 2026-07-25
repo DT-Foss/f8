@@ -1,0 +1,27 @@
+{
+  "N": 20000,
+  "bit0_excluded": true,
+  "results": [
+    {
+      "cipher": "Speck 32/64 R22",
+      "mi_add": 0.03426067551050438,
+      "mi_xor": 1.2800005462221264e-06,
+      "carry_dependent": true,
+      "verdict": "CARRY-DEPENDENT"
+    },
+    {
+      "cipher": "TEA R32",
+      "mi_add": 0.0007777532342254645,
+      "mi_xor": 0.002577756734887471,
+      "carry_dependent": false,
+      "verdict": "topology, not carry"
+    },
+    {
+      "cipher": "Threefish MIX R72",
+      "mi_add": 0.13457396974398472,
+      "mi_xor": 0.6931471005599432,
+      "carry_dependent": false,
+      "verdict": "topology, not carry"
+    }
+  ]
+}
