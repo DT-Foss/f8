@@ -1,8 +1,10 @@
 # F8 — Full-Round Known-Key Cross-Round Distinguishers
 
-**F8** is a cross-round mutual-information test that finds structural, non-decaying signal surviving at **full round count**, across several architectural mechanisms and twelve ciphers.
+**F8** is a cross-round mutual-information test that finds structural, non-decaying signal surviving at **full round count**, across two architectural mechanisms and nine ciphers.
 
-Every distinguisher in the table below stands. A carry control added on 2026-07-25 established that they do not all work by the *same* mechanism: the Speck family leaks through the carry chain of modular addition, while Threefish leaks through the topology of its MIX function. Both are distinguishers; the mechanism labels were revised, not the results.
+Nine of twelve distinguishers stand under a full control battery. They work by **two** mechanisms, not one: the Speck family leaks through the carry chain of modular addition, while Threefish, GIFT and PRESENT leak through permutation retention — a condition that needs no addition at all and predicts, on unseen constructions, which permutations leak (38/38 correct).
+
+TEA and RC5 do not survive the same battery and are marked unsupported.
 
 Author: **David Tom Foss**
 
@@ -29,9 +31,9 @@ All rounds counts below are the ciphers' **full specified round counts** — Spe
 | Threefish-1024 | 80 | MIX topology | **+845** | **75.1 %** (z=+50) | topology |
 | GIFT-64 | 28 | permutation cycle | **+676** | — | n/a (no addition) |
 | GIFT-128 | 40 | permutation cycle | **+275** | — | n/a (no addition) |
-| TEA | 32 | topology | **+216** | 53.0 % | topology |
-| RC5-32/12/16 | 12 | Feistel self-XOR | **+112** | — | not yet run |
-| RC5-64/24/24 | 24 | Feistel self-XOR | **+28** (weak) | — | not yet run |
+| TEA | 32 | *unsupported* | −0.5 | 48.8 % | topology |
+| RC5-32/12/16 | 12 | *unsupported* | +0.6 | 50.8 % | topology |
+| RC5-64/24/24 | 24 | *unsupported* | not re-run | — | not run |
 | **random control** | — | *pure noise* | **+0.04 … +0.09** | 50.9 % | — |
 
 Every cipher survives the corrected statistic while the random control collapses to zero.
@@ -186,18 +188,66 @@ all `ws` diagonal shifts without being told which one to expect, and recovers
 
 Both columns are published so the correction is auditable. `experiments/maxstat.py` runs its own random-data self-test when executed directly.
 
-## Four architectural mechanisms
+## Two mechanisms
 
-F8's signal always requires the same underlying condition: **a state variable meeting a transform of itself, or an addition recurring at a fixed position, across the round boundary.** Never MI(operand; raw addition output) alone — that quantity is algebraically zero for independent operands, at every bit position, regardless of cipher.
+Earlier revisions listed four. The carry control and the permutation sweep
+collapsed them to two: mechanisms 2 and 3 turned out to be the same condition
+stated twice, and mechanism 4 did not survive its own control.
 
-1. **β-masking (Speck).** `ROL(y, β)` masks the low β bits of the addition output. The remaining `ws − β` bits carry the addition's carry correlation uniformly, landing on an α-shifted diagonal.
-2. **MIX topology (Threefish-256, Threefish-1024).** The MIX function computes `e0 = x0 + x1`, `e1 = ROL(x1,r) ^ e0`, so `e0` is contained in `e1` by construction and the permutation returns that pairing to a fixed word position every round. This survives the carry control — it measures the same with XOR in place of addition — so it is a topological mechanism rather than a carry one. Verified by ablation: key schedule, tweak and all eight rotation constants removed, measurement unchanged.
-3. **Permutation fixed-point carry retention (Threefish-1024).** Bit 0 of any modular addition has no carry-in — a universal, cipher-independent fact, invisible on its own (an isolated MIX call shows no signal at bit 0). But Threefish-1024's own 16-word permutation (independently specified in the Skein v1.3 spec, not derived from the 512-bit one) has two genuine **fixed points**: two of its eight addition-sum outputs land back at their exact starting slot, every single round, for all 80 rounds. At those two slots only, the trivial bit-0 fact accumulates undisturbed instead of being scattered — reaching MI = ln 2 exactly, confirmed absent at every other slot (checked directly: slots in longer permutation cycles show zero signal, matching the mechanism precisely). This also refines this project's earlier Cross-Pair Fraction (CPF) result: Threefish-1024's permutation has CPF = 0.750 (comfortably above the 0.625 threshold that predicted immunity for Threefish-512, whose own permutation reaches CPF = 1.000) — CPF crossing pairs is necessary but not sufficient; a permutation can cross pairs on average while still fixing individual slots in place.
-4. **Feistel self-XOR (TEA, RC5, RC5-64).** *(TEA measures stronger with XOR than with addition, so its mechanism is topological rather than carry-based; RC5 has not yet been run through the carry control.)* A single addition applied directly to a transform of the *other* branch, with its result used immediately as the new branch value — no foreign XOR interrupts between the addition and the next round consuming it. TEA: `y += (z<<4)^(z+sum)^(z>>5)`. RC5: `A = ROTL(A^B, B) + S[2i]`. Both branches occupy fixed positions and alternate roles every round, exposing the addition's carry chain the same way β-masking does. This mechanism is provably word-width-independent — RC5-64/24/24 (doubling the word width to 64 bits) shows the identical leak, just with a smaller per-bit MI that needs a larger sample size to separate from noise. (Ciphers with the *same* fixed-position self-reference but a foreign XOR *between* nested additions — XTEA, the Alzette ARX-box used in SPARKLE — do not show this signal; the foreign XOR breaks the self-reference the mechanism depends on.)
+### 1. Carry chain — β-masking (Speck family)
 
-For the SPN ciphers (GIFT, PRESENT), the same cross-round MI leak is driven instead by the cycle structure of the fixed bit permutation.
+`ROL(y, β)` masks the low β bits of the addition output; the remaining `ws − β`
+bits carry the addition's carry correlation, landing on an α-shifted diagonal.
 
-**Not every cipher fits this pattern**, and the mechanism above lets you check *before measuring*: a cipher whose round permutation shifts words without ever re-exposing a word to a transform of itself, and without keeping an addition's position fixed, is structurally outside F8's reach — independent of its specific rotation amounts or key schedule.
+Confirmed by the carry control: replacing `+` with `^` destroys the signal by a
+factor of 26,766 (0.034261 → 0.000001). Confirmed independently by the shift
+search, which recovers `s = α` for all four variants without being told to look
+there. Quantified by `MI(β) = 0.78·exp(−1.42·β)`, R² = 0.999997.
+
+This is the mechanism of the peer-reviewed result, and it is the only one in
+this repository that depends on modular addition.
+
+### 2. Permutation retention (Threefish-256, Threefish-1024, GIFT, PRESENT)
+
+**A leak exists iff an addition output stays in the MIX pair that produced it.**
+
+For a round that computes `e_add = w[2k] + w[2k+1]` and `e_xor = ROL(w[2k+1],r) ^ e_add`
+and then applies a word permutation, the condition is: `e_add` from pair `k` must
+land in slot `2k` or `2k+1`.
+
+Validated as a *prediction*, not an explanation:
+
+| Test | Result |
+|---|---|
+| All 24 four-word permutations | **24 / 24** |
+| 14 random six-word permutations (shape never used to derive the rule) | **14 / 14** |
+
+Leaking permutations measure MI ≈ 0.12–0.14; non-leaking ones sit at
+0.0003–0.0007, the noise floor. There is no middle ground — the condition is
+sharp.
+
+This mechanism needs **no modular addition at all**: it measures the same, or
+stronger, with XOR in place of `+` (Threefish: 0.1346 → 0.6931), and GIFT and
+PRESENT contain no addition anywhere yet leak through the cycle structure of
+their fixed bit permutation, which is the same condition expressed for a bit
+permutation rather than a word permutation.
+
+It is also insensitive to everything a cipher designer normally tunes: key
+schedule, tweak, and all eight Threefish rotation constants can be removed
+without moving the measurement (0.128–0.136 across every combination).
+
+### What was withdrawn
+
+- **"Raw carry + rotation-spread" and "permutation fixed-point carry retention"**
+  were two descriptions of mechanism 2. Merged.
+- **"Feistel self-XOR" (TEA, RC5).** TEA measures *stronger* with XOR than with
+  addition, so it is not carry-based; and under the same control battery applied
+  to every other cipher, TEA and RC5-32 return Z = −0.5 and +0.6 with held-out
+  prediction at chance (48.8 % and 50.8 %). Their earlier figures came from a
+  larger cell search at larger N. They are not currently supported.
+- **Self-reference as the topological condition.** Directly falsified: replacing
+  the repeated operand with an independent word leaves the signal unchanged
+  (ratio 1.0×). The condition is permutation retention, not self-reference.
 
 ## The F8 signal in detail (Speck 32/64)
 
