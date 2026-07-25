@@ -4,7 +4,7 @@
 
 Nine of twelve distinguishers stand under a full control battery. They work by **two** mechanisms, not one: the Speck family leaks through the carry chain of modular addition, while Threefish, GIFT and PRESENT leak through permutation retention — a condition that needs no addition at all and predicts, on unseen constructions, which permutations leak (38/38 correct).
 
-TEA and RC5 do not survive the same battery and are marked unsupported.
+TEA and RC5 are marked **(UNCLEAR)**: they measured positive under the original protocol and at the noise floor under the stricter one. Both figures are kept — the disagreement is itself a data point, and the case is open rather than closed.
 
 Author: **David Tom Foss**
 
@@ -31,9 +31,9 @@ All rounds counts below are the ciphers' **full specified round counts** — Spe
 | Threefish-1024 | 80 | MIX topology | **+845** | **75.1 %** (z=+50) | topology |
 | GIFT-64 | 28 | permutation cycle | **+676** | — | n/a (no addition) |
 | GIFT-128 | 40 | permutation cycle | **+275** | — | n/a (no addition) |
-| TEA | 32 | *unsupported* | −0.5 | 48.8 % | topology |
-| RC5-32/12/16 | 12 | *unsupported* | +0.6 | 50.8 % | topology |
-| RC5-64/24/24 | 24 | *unsupported* | not re-run | — | not run |
+| TEA | 32 | **(UNCLEAR)** | +216 / −0.5 | 53.0 % / 48.8 % | topology |
+| RC5-32/12/16 | 12 | **(UNCLEAR)** | +112 / +0.6 | — / 50.8 % | topology |
+| RC5-64/24/24 | 24 | **(UNCLEAR)** | +28 | — | not run |
 | **random control** | — | *pure noise* | **+0.04 … +0.09** | 50.9 % | — |
 
 Every cipher survives the corrected statistic while the random control collapses to zero.
@@ -240,11 +240,19 @@ without moving the measurement (0.128–0.136 across every combination).
 
 - **"Raw carry + rotation-spread" and "permutation fixed-point carry retention"**
   were two descriptions of mechanism 2. Merged.
-- **"Feistel self-XOR" (TEA, RC5).** TEA measures *stronger* with XOR than with
-  addition, so it is not carry-based; and under the same control battery applied
-  to every other cipher, TEA and RC5-32 return Z = −0.5 and +0.6 with held-out
-  prediction at chance (48.8 % and 50.8 %). Their earlier figures came from a
-  larger cell search at larger N. They are not currently supported.
+- **"Feistel self-XOR" (TEA, RC5) — reclassified (UNCLEAR), not withdrawn.**
+  TEA measures *stronger* with XOR than with addition, so it is not carry-based.
+  Under the stricter battery — corrected statistic, bit 0 excluded, cell count
+  matched to the other ciphers, N = 20,000 — TEA returns Z = −0.5 and RC5-32
+  returns Z = +0.6, both with held-out prediction at chance. Under the original
+  protocol, at larger N and a wider cell search, they returned +216 and +112.
+
+  Both measurements are kept in the table. Which protocol is right for these two
+  is unresolved: the stricter one may be discarding a genuine weak signal by
+  restricting the search, or the looser one may be selection noise. The open
+  experiment is to run TEA and RC5 at N ≥ 200,000 with the *corrected* statistic
+  over the *full* cell range — neither protocol has been applied at that
+  combination. Until then this stays an open case, not a negative result.
 - **Self-reference as the topological condition.** Directly falsified: replacing
   the repeated operand with an independent word leaves the signal unchanged
   (ratio 1.0×). The condition is permutation retention, not self-reference.
