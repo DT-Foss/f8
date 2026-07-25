@@ -2,7 +2,7 @@
 
 **F8** is a cross-round mutual-information test that finds structural, non-decaying signal surviving at **full round count**, across four independent architectural mechanisms and twelve ciphers.
 
-For Threefish-256 and Threefish-1024 the signal is not merely detectable but **exactly predictable**: one bit of the cross-round difference is recovered with **100 % accuracy on held-out data**, after all 72 and 80 rounds respectively. See [Prediction](#prediction-not-just-distinction).
+For Threefish-256 and Threefish-1024 the signal is not merely detectable but **predictable**: a cross-round difference bit is recovered with **75 % accuracy on held-out data**, after all 72 and 80 rounds respectively. See [Prediction](#prediction-not-just-distinction).
 
 Author: **David Tom Foss**
 
@@ -51,19 +51,31 @@ selection never saw.
 
 | Cipher | Rounds | Rule | Held-out accuracy | Binomial z |
 |---|:--:|---|---:|---:|
-| Threefish-256 | 72 | bit 0 of w1 → diff bit 0 of w0 | **100.00 %** | +141.4 |
-| Threefish-1024 | 80 | bit 0 of w1 → diff bit 0 of w0 | **100.00 %** | +100.0 |
+| Threefish-256 | 72 | bit 2 of w3 → diff bit 2 of w2 | **75.08 %** | +70.9 |
+| Threefish-1024 | 80 | bit 1 of w3 → diff bit 1 of w2 | **75.11 %** | +50.2 |
 | Speck 32/64 | 22 | bit 11 of x → diff bit 4 of y | 62.17 % | +34.4 |
 | Speck 48/96 | 23 | bit 14 of x → diff bit 6 of y | 56.42 % | +18.1 |
 | Speck 64/128 | 27 | bit 23 of x → diff bit 15 of y | 56.01 % | +17.0 |
 | TEA | 32 | bit 31 of z → diff bit 31 of y | 52.96 % | +8.4 |
 | **random baseline** | — | *best of the same cell count* | 50.88 % | +2.5 |
 
-Both Threefish variants are predicted **exactly**, at full round count. Not
-99-point-something — every block in the held-out set, 20,000 of 20,000 for
-Threefish-256 and 10,000 of 10,000 for Threefish-1024. `MI = ln 2` is what that
-looks like measured as information; 100 % accuracy is the same fact stated as a
-falsifiable prediction.
+### Bit 0 is excluded, and why that matters
+
+Bit 0 of a modular addition has no carry-in: `(u+v)[0] = u[0] XOR v[0]`
+identically. In any cipher whose round writes a sum back into the state, that
+makes one cross-round difference bit an algebraic consequence of the
+construction — predictable at 100 % for trivial reasons, in any such cipher,
+with no cryptanalysis involved. `MI = ln 2` on bit 0 is that identity measured
+as information, not a leak.
+
+Earlier revisions of this README reported that 100 % figure as the headline
+result. It was withdrawn on checking the algebra. Bit 0 is now excluded by
+default in `experiments/prediction.py`; pass `include_bit0=True` to reproduce
+the identity for comparison.
+
+Bits 1 and above **do** have a carry-in, so signal there is genuine carry
+information. That is where the 75 % figures come from, and they are the honest
+result.
 
 This test needs no permutation null and no familywise correction, and it cannot
 be inflated by cell selection: the random baseline is allowed to pick the best of
