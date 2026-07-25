@@ -20,13 +20,13 @@ All rounds counts below are the ciphers' **full specified round counts** — Spe
 
 | Cipher          | Rounds | Mechanism           | Z (naive) | Z (corrected) | Script |
 |-----------------|:------:|---------------------|----------:|--------------:|--------|
-| Threefish-256   |   72   | raw carry           |   +16302  |    **+17592** | `experiments/threefish256.py` |
-| Threefish-1024  |   80   | permutation fixed-point | +16537 |  **+20461** | `experiments/threefish1024.py` |
 | Speck 32/64     |   22   | β-masking           |    +4088  |     **+3433** | `experiments/reproduce_core.py`, `experiments/speck_variants.py` |
 | Speck 128/256   |   34   | β-masking           |    +1776  |     **+3110** | `experiments/speck_variants.py` |
+| Threefish-256   |   72   | carry retention     |   +16302  |     **+2467** | `experiments/threefish256.py` |
 | Speck 64/128    |   27   | β-masking           |    +1165  |     **+1795** | `experiments/speck_variants.py` |
 | Speck 48/96     |   23   | β-masking           |     +918  |     **+1385** | `experiments/speck_variants.py` |
 | PRESENT-80      |   31   | permutation cycle   |    +1183  |   already correct | `experiments/present.py` |
+| Threefish-1024  |   80   | permutation fixed-point | +16537 |    **+845** | `experiments/threefish1024.py` |
 | GIFT-64         |   28   | permutation cycle   |     +676  |   already correct | `experiments/gift.py` |
 | GIFT-128        |   40   | permutation cycle   |     +275  |   already correct | `experiments/gift.py` |
 | TEA             |   32   | Feistel self-XOR    |     +499  |      **+216** | `experiments/tea.py` |
@@ -36,7 +36,7 @@ All rounds counts below are the ciphers' **full specified round counts** — Spe
 
 Every cipher survives the corrected statistic while the random control collapses to zero.
 
-**Threefish-256 and Threefish-1024 both reach MI = 0.693147 = ln 2 on bit 0** — the information-theoretic maximum for a single bit — at 72 and 80 rounds respectively. That bit is not "statistically detectable"; it is deterministically predictable from the cross-round difference. Null in the same run: 0.000202.
+The corrected Threefish figures **exclude bit 0**. Bit 0 of a modular addition has no carry-in, so `(u+v)[0] = u[0] XOR v[0]` identically — that bit is predictable at 100 % in any cipher that writes a sum back into the state, for reasons of arithmetic rather than cryptanalysis. Including it inflates Threefish-256 from +2467 to +10984 and Threefish-1024 from +845 to +4211. Speck and TEA are unaffected (241.9 → 240.6 and 14.7 → 14.7), because their signal never rested on bit 0.
 
 **RC5-64/24/24 is the weakest result here.** Under the corrected statistic it drops to Z ≈ 28, and its winning cell is not stable across sample sizes. It is consistent with the w=32 mechanism generalizing across word width, but it should be read as "present", not as a strong distinguisher.
 
