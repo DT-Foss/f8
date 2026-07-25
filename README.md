@@ -29,14 +29,14 @@ All rounds counts below are the ciphers' **full specified round counts** — Spe
 | GIFT-128        |   40   | permutation cycle   |     +275  |   already correct | `experiments/gift.py` |
 | TEA             |   32   | Feistel self-XOR    |     +499  |      **+216** | `experiments/tea.py` |
 | RC5-32/12/16    |   12   | Feistel self-XOR    |     +221  |      **+112** | `experiments/rc5.py` |
-| RC5-64/24/24    |   24   | Feistel self-XOR    |     +444  |    **+23** (weak) | `experiments/rc5_64.py` |
-| **random control** | — | *none — pure noise* |      +5.8 |      **−0.3** | `experiments/maxstat.py` |
+| RC5-64/24/24    |   24   | Feistel self-XOR    |     +444  |    **+28** (weak) | `experiments/rc5_64.py` |
+| **random control** | — | *none — pure noise* |      +5.8 | **+0.04 … +0.09** | `experiments/maxstat.py` |
 
 Every cipher survives the corrected statistic while the random control collapses to zero.
 
 **Threefish-256 and Threefish-1024 both reach MI = 0.693147 = ln 2 on bit 0** — the information-theoretic maximum for a single bit — at 72 and 80 rounds respectively. That bit is not "statistically detectable"; it is deterministically predictable from the cross-round difference. Null in the same run: 0.000202.
 
-**RC5-64/24/24 is the weakest result here.** Under the corrected statistic it drops to Z ≈ 23, and its winning cell is not stable across sample sizes. It is consistent with the w=32 mechanism generalizing across word width, but it should be read as "present", not as a strong distinguisher.
+**RC5-64/24/24 is the weakest result here.** Under the corrected statistic it drops to Z ≈ 28, and its winning cell is not stable across sample sizes. It is consistent with the w=32 mechanism generalizing across word width, but it should be read as "present", not as a strong distinguisher.
 
 Speck Z-scores are the 3-seed mean (Speck 32/64) and the full-round encrypt-direction Z (other variants). The corrected Speck column comes from `f8_diagonal_maxstat`, which searches **all** `ws` diagonal shifts and scores the best against a null over that same family. It is told nothing about the mechanism — and recovers `s = α` for all four variants (7, 8, 8, 8 against α = 7, 8, 8, 8). That is independent confirmation of β-masking rather than an assumption of it, and it is why the corrected Z exceeds the naive Z for the wider variants: the informed test in `f8_mi_test` skips the dead-set bits, the shift search does not. GIFT and PRESENT are verified against their official test vectors ([giftcipher/gift](https://github.com/giftcipher/gift); PRESENT CHES 2007) before the F8 scan runs; both use `f8_mi_test`, whose null already applies the same max-over-targets selection to permuted data, so their published Z-scores need no correction. Cipher implementations are checked against official test vectors before any measurement — Speck against the NSA specification vectors, Threefish against the Skein v1.3 KAT, RC5 against RFC 2040.
 

@@ -202,5 +202,24 @@
     ],
     "overall_growth_8k_to_800k": 24.54127270474592
   },
-  "leak_confirmed": true
+  "corrected_z_N200k": 28.205373300352267,
+  "corrected_z_per_seed": [
+    30.526119979528776,
+    31.45709319118325,
+    22.632906730344782
+  ],
+  "random_control_z": -1.006930717510408,
+  "random_control_detail": {
+    "z_corrected": -1.006930717510408,
+    "real_max_mi": 3.760860797674681e-05,
+    "null_max_mi": 4.321596241943837e-05,
+    "null_max_std": 5.568758947542587e-06,
+    "n_cells": 16384,
+    "src_word": 1,
+    "src_bit": 55,
+    "tgt_word": 0,
+    "tgt_bit": 1
+  },
+  "leak_confirmed": true,
+  "strength": "weak -- weakest distinguisher in this repo"
 }
