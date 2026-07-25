@@ -215,12 +215,48 @@ For a round that computes `e_add = w[2k] + w[2k+1]` and `e_xor = ROL(w[2k+1],r) 
 and then applies a word permutation, the condition is: `e_add` from pair `k` must
 land in slot `2k` or `2k+1`.
 
-Validated as a *prediction*, not an explanation:
+Validated as a *prediction*, not an explanation — `experiments/retention_rule.py`:
 
 | Test | Result |
 |---|---|
-| All 24 four-word permutations | **24 / 24** |
-| 14 random six-word permutations (shape never used to derive the rule) | **14 / 14** |
+| All 24 four-word permutations (rule derived here) | **24 / 24** |
+| 14 random six-word permutations (shape never used to fit) | **14 / 14** |
+| Real ciphers, prediction stated from the spec first | **3 / 3** |
+| **Total** | **41 / 41** |
+
+The three real ciphers:
+
+| Cipher | Predicted | Measured MI | |
+|---|---|---:|---|
+| Threefish-512 (72 rounds) | no leak — no pair retains its sum | 0.000517 | correct |
+| Salsa20 (20 rounds) | no leak — every sum is consumed by an XOR of another word | 0.000551 | correct |
+| Alzette / SPARKLE ARX-box | **leak** — `x = x + ROL(y,a)` retains the sum in `x` | **0.127750** | correct |
+
+**Threefish-512 was an open puzzle**: why is the middle size immune when both
+256 and 1024 leak? The rule answers it from the specification alone — its
+permutation `[2,1,4,7,6,5,0,3]` retains no addition output in its own pair, for
+any of the four pairs.
+
+**Alzette is a new hit.** It was previously classified immune on the basis of
+the full SPARKLE permutation. The ARX-box itself is not: MI = 0.133, flat from
+4 to 32 rounds, unchanged across all four SPARKLE round constants, random
+control 0.00024. The carry control says topology (0.133 with `+`, 0.693 with
+`^`), so it belongs to this mechanism and not to Speck's.
+
+### The rule predicts the primitive, not the cipher
+
+A linear diffusion layer on top removes the leak entirely:
+
+| | MI |
+|---|---:|
+| Alzette alone | 0.1332 |
+| full SPARKLE384 permutation (1 step) | 0.0004 |
+| full SPARKLE384 permutation (11 steps) | 0.0004 |
+
+This is exactly the SPARX relationship — ARX-box leaks in isolation, linear
+inter-round layer is the whole protection — now shown for a second cipher
+family. The rule tells you when a *round function plus word permutation* leaks;
+it does not claim the surrounding construction cannot fix it.
 
 Leaking permutations measure MI ≈ 0.12–0.14; non-leaking ones sit at
 0.0003–0.0007, the noise floor. There is no middle ground — the condition is
@@ -291,6 +327,8 @@ python experiments/rc5.py                # RC5-32/12/16
 python experiments/rc5_64.py             # RC5-64/24/24
 python experiments/maxstat.py            # statistic self-test on random data
 python experiments/prediction.py         # held-out bit-prediction accuracy
+python experiments/carry_control.py      # ADD -> XOR: is it really carries?
+python experiments/retention_rule.py     # the prediction rule, 41/41
 ```
 
 Each script writes a JSON result under `results/`. To regenerate the figures:

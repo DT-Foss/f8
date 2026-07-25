@@ -1,0 +1,38 @@
+{
+  "rule": "leak iff an addition output stays in the pair that produced it",
+  "four_word": {
+    "correct": 24,
+    "total": 24
+  },
+  "six_word": {
+    "correct": 14,
+    "total": 14
+  },
+  "real_ciphers": [
+    {
+      "cipher": "Threefish-512",
+      "rounds": 72,
+      "predicted": false,
+      "mi": 0.0005170606677999956,
+      "match": true
+    },
+    {
+      "cipher": "Salsa20",
+      "rounds": 20,
+      "predicted": false,
+      "mi": 0.0005514516053926055,
+      "match": true
+    },
+    {
+      "cipher": "Alzette (SPARKLE ARX-box)",
+      "rounds": 16,
+      "predicted": true,
+      "mi": 0.12775019479395855,
+      "match": true
+    }
+  ],
+  "total": {
+    "correct": 41,
+    "total": 41
+  }
+}
