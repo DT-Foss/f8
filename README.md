@@ -38,6 +38,47 @@ All rounds counts below are the ciphers' **full specified round counts** — Spe
 
 Every cipher survives the corrected statistic while the random control collapses to zero.
 
+## Comparison with published cryptanalysis
+
+Round counts reached by the best published attacks, against the round counts
+reached here. All figures below are for **known-key distinguishers** where the
+literature provides them, since that is the model F8 operates in.
+
+| Cipher | Full rounds | Best published | Type | **F8** |
+|---|:--:|:--:|---|:--:|
+| Threefish-256 | 72 | **53** | known-key, rotational rebound (Khovratovich–Nikolić–Rechberger 2010) | **72** |
+| Threefish-1024 | 80 | *none found* | — | **80** |
+| Speck 32/64 | 22 | **11** | differential-linear / neural distinguisher (Gohr 2019) | **22** |
+| Speck 48/96 | 23 | 16 | related-key differential trail | **23** |
+| Speck 64/128 | 27 | 17 | related-key differential trail | **27** |
+| Speck 128/256 | 34 | 19 | related-key differential trail | **34** |
+| PRESENT-80 | 31 | ~7 | neural distinguisher (accuracy 0.56 at R=7) | **31** |
+| GIFT-64 | 28 | 9 | integral distinguisher | **28** |
+| GIFT-128 | 40 | — | — | **40** |
+
+Two points of context that matter more than the numbers:
+
+**The Threefish comparison is on the same axis.** Khovratovich, Nikolić and
+Rechberger mounted a known-key distinguisher on 53 of 72 rounds in 2010; the
+Skein team responded by changing Threefish's rotation constants. Under F8 the
+rotation constants make no difference at all — measurements sit at 0.128–0.136
+across every combination, and with the constants removed entirely. F8 reaches an
+axis that countermeasure does not address.
+
+**These are not the same claim as a break.** The published attacks are "faster
+than brute force" or "recovers key material". F8 says "distinguishable from
+random at full round count". Related, not identical, and weaker in what it
+implies. No key recovery, no preimage, no collision follows from anything here.
+
+**Where F8 is behind.** SHA-256 collisions are published to ~31 of 64 rounds and
+preimages to ~45; F8 reaches 6. SHA-2 is structurally immune to this axis — see
+the mechanism table below — so the comparison shows a limit of the method, not a
+weakness in the measurement.
+
+The literature review behind this table was targeted, not exhaustive: four
+searches per cipher family. Before any of these figures is used in a submission,
+a systematic IACR review per cipher is required. Corrections welcome.
+
 ## Carry control: what survived
 
 F8 claims that modular addition leaks its carry chain across the round boundary.
