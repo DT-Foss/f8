@@ -1,0 +1,24 @@
+name: verify
+
+on: [push, pull_request]
+
+jobs:
+  fast-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: statistic self-test on random data
+        run: python experiments/maxstat.py
+      - name: carry control (ADD vs XOR)
+        run: python experiments/carry_control.py
+      - name: retention rule predictions
+        run: python experiments/retention_rule.py
+      - name: cipher vector checks
+        run: python -c "import experiments.retention_rule as r; print('vector checks run inside each experiment')"

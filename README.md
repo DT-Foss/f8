@@ -351,8 +351,14 @@ Six properties, all reproduced by `experiments/reproduce_core.py`:
 
 ```bash
 pip install -e .
-python reproduce.py          # runs everything, prints the summary table
+python quick.py              # controls + prediction rule, ~2 seconds
+python reproduce.py          # everything, ~16 minutes
 ```
+
+`quick.py` is the fast pass: the random-data self-test, the carry control and all
+41 rule predictions. Start there. See [REPRODUCIBILITY.md](REPRODUCIBILITY.md)
+for the environment, the cipher-vector verification order, and the statistical
+protocol.
 
 Run a single cipher directly:
 
@@ -370,6 +376,7 @@ python experiments/maxstat.py            # statistic self-test on random data
 python experiments/prediction.py         # held-out bit-prediction accuracy
 python experiments/carry_control.py      # ADD -> XOR: is it really carries?
 python experiments/retention_rule.py     # the prediction rule, 41/41
+cat experiments/immune/README.md         # ciphers attacked and not broken
 ```
 
 Each script writes a JSON result under `results/`. To regenerate the figures:
