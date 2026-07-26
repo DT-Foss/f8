@@ -1,0 +1,16 @@
+{
+  "step1": {
+    "y_identical": true,
+    "x_identical": false
+  },
+  "step2": {
+    "calibration": 0.4435475588941189,
+    "score_true": 0.4435475588941189,
+    "rank": 21450,
+    "z": 0.4633275731540884,
+    "distinct": 32703
+  },
+  "step3": {
+    "distinct_checksums": 1
+  }
+}

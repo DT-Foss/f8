@@ -210,7 +210,16 @@ every round, so it is the same size at round 72 as at round 8. That is precisely
 what makes measuring it at full round count meaningful rather than vacuous.
 
 **Scope.** These are known-key distinguishers. They do not recover keys and they
-do not recover plaintext. For Threefish that is the *native* model rather than a
+do not recover plaintext — and on Speck they provably cannot, in this form. The
+F8 observable is independent of the round key: Speck's inverse round recovers
+`y = ROR(x' XOR y', β)`, which contains no key material, so the measured
+y-difference is invariant under any key guess. A full 65,536-candidate sweep puts
+the true key at rank 21,450 with z = +0.46. See
+[KEY_BLINDNESS.md](KEY_BLINDNESS.md); `experiments/key_blindness.py` reproduces it.
+
+This bounds the method rather than the underlying leakage. A differential counter
+over partially decrypted states *is* key-dependent, because it reads the `x`
+branch, and that route is not closed. For Threefish that is the *native* model rather than a
 limitation: Skein uses Threefish as a compression function, where the key input
 is public by construction.
 
@@ -374,6 +383,7 @@ python experiments/rc5.py                # RC5-32/12/16
 python experiments/rc5_64.py             # RC5-64/24/24
 python experiments/maxstat.py            # statistic self-test on random data
 python experiments/prediction.py         # held-out bit-prediction accuracy
+python experiments/key_blindness.py      # why F8 cannot recover keys
 python experiments/carry_control.py      # ADD -> XOR: is it really carries?
 python experiments/retention_rule.py     # the prediction rule, 41/41
 cat experiments/immune/README.md         # ciphers attacked and not broken
